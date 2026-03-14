@@ -1,6 +1,6 @@
 {
-  "name": "Bri Status Dashboard",
-  "short_name": "Bri",
+  "name": "BMC - BizRnR Mission Control",
+  "short_name": "BMC",
   "description": "Real-time AI assistant status dashboard",
   "start_url": "/",
   "display": "standalone",

@@ -165,7 +165,7 @@ app.prepare().then(() => {
   });
 
   httpServer.listen(port, () => {
-    console.log(`> Bri Dashboard ready on http://${hostname}:${port}`);
+    console.log(`> BMC ready on http://${hostname}:${port}`);
     console.log(`> WebSocket server on ws://${hostname}:${port}/ws`);
   });
 });

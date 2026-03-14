@@ -1,53 +1,70 @@
 #!/usr/bin/env node
+
 /**
- * Create admin users for Bri Dashboard
- * Usage: node scripts/create-admin.js <email> <password> <name>
+ * Create admin users for BMC (BizRnR Mission Control)
+ * 
+ * Usage: node scripts/create-admin.js <email> <password>
  */
 
-const bcrypt = require('bcryptjs');
+import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
+import * as dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-const SUPABASE_URL = 'https://ewsahqwtupghisvbekvf.supabase.co';
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV3c2FocXd0dXBnaGlzdmJla3ZmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzEzMjE3MSwiZXhwIjoyMDc4NzA4MTcxfQ.RCxzAy-9NVJZIgDvEC3CZzodQrF-yFzA5qSv2BomWtc';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-async function createAdmin(email, password, name) {
-  console.log(`Creating admin user: ${email}`);
-  
-  // Hash password
-  const passwordHash = await bcrypt.hash(password, 12);
-  
-  // Create user via Supabase REST API
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/dashboard_users`, {
-    method: 'POST',
-    headers: {
-      'apikey': SUPABASE_SERVICE_KEY,
-      'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation',
-    },
-    body: JSON.stringify({
-      email: email.toLowerCase(),
-      password_hash: passwordHash,
-      name: name,
-      role: 'admin',
-    }),
-  });
-  
-  if (response.ok) {
-    const data = await response.json();
-    console.log('✓ Admin user created:', data[0]?.email);
-    return true;
-  } else {
-    const error = await response.text();
-    console.error('✗ Failed to create user:', error);
-    return false;
-  }
-}
+// Load environment variables
+dotenv.config({ path: join(__dirname, '..', '.env.local') });
 
-// Main
-const args = process.argv.slice(2);
-if (args.length < 3) {
-  console.log('Usage: node scripts/create-admin.js <email> <password> <name>');
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
   process.exit(1);
 }
 
-createAdmin(args[0], args[1], args[2]);
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function createAdmin(email, password) {
+  try {
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Insert user
+    const { data, error } = await supabase
+      .from('dashboard_users')
+      .insert({
+        email,
+        password_hash: passwordHash,
+        role: 'admin',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        console.error('❌ User already exists');
+      } else {
+        console.error('❌ Error creating user:', error.message);
+      }
+      process.exit(1);
+    }
+
+    console.log('✅ Admin user created:', data.email);
+  } catch (err) {
+    console.error('❌ Error:', err);
+    process.exit(1);
+  }
+}
+
+const [email, password] = process.argv.slice(2);
+
+if (!email || !password) {
+  console.error('Usage: node scripts/create-admin.js <email> <password>');
+  process.exit(1);
+}
+
+createAdmin(email, password);

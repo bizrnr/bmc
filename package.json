@@ -1,5 +1,5 @@
 {
-  "name": "bri-dashboard",
+  "name": "@bizrnr/bmc",
   "version": "0.1.0",
   "private": true,
   "scripts": {

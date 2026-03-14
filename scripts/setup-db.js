@@ -1,61 +1,86 @@
 #!/usr/bin/env node
+
 /**
- * Setup database tables for Bri Dashboard
- * Run: node scripts/setup-db.js
+ * Setup database tables for BMC (BizRnR Mission Control)
+ * 
+ * Creates the dashboard_users table if it doesn't exist
  */
 
-const SUPABASE_URL = 'https://ewsahqwtupghisvbekvf.supabase.co';
-const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV3c2FocXd0dXBnaGlzdmJla3ZmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MzEzMjE3MSwiZXhwIjoyMDc4NzA4MTcxfQ.RCxzAy-9NVJZIgDvEC3CZzodQrF-yFzA5qSv2BomWtc';
+import { createClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables
+dotenv.config({ path: join(__dirname, '..', '.env.local') });
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function setupDatabase() {
-  console.log('Setting up Bri Dashboard database...');
-  
+  console.log('Setting up BMC database...');
+
   // Check if table exists by trying to query it
-  const checkResponse = await fetch(`${SUPABASE_URL}/rest/v1/dashboard_users?select=id&limit=1`, {
-    headers: {
-      'apikey': SUPABASE_SERVICE_KEY,
-      'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-    },
-  });
-  
-  if (checkResponse.ok) {
-    console.log('✓ dashboard_users table already exists');
+  const { error: checkError } = await supabase
+    .from('dashboard_users')
+    .select('id')
+    .limit(1);
+
+  if (checkError && checkError.code === '42P01') {
+    console.log('Creating dashboard_users table...');
     
-    // Check for admin users
-    const usersResponse = await fetch(`${SUPABASE_URL}/rest/v1/dashboard_users?select=email,role`, {
-      headers: {
-        'apikey': SUPABASE_SERVICE_KEY,
-        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-      },
+    // Table doesn't exist, create it using raw SQL
+    const { error: createError } = await supabase.rpc('exec_sql', {
+      sql: `
+        CREATE TABLE IF NOT EXISTS dashboard_users (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'viewer',
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_dashboard_users_email ON dashboard_users(email);
+      `
     });
-    
-    const users = await usersResponse.json();
-    console.log(`  Found ${users.length} users:`, users.map(u => `${u.email} (${u.role})`).join(', ') || 'none');
-    return true;
-  }
-  
-  console.log('Table does not exist. Please create it via Supabase dashboard:');
-  console.log(`
--- Run this SQL in Supabase SQL Editor:
-CREATE TABLE dashboard_users (
+
+    if (createError) {
+      console.error('❌ Error creating table:', createError.message);
+      console.log('\nPlease run this SQL manually in Supabase SQL Editor:');
+      console.log(`
+CREATE TABLE IF NOT EXISTS dashboard_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  name TEXT,
-  role TEXT DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+  role TEXT NOT NULL DEFAULT 'viewer',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable RLS
-ALTER TABLE dashboard_users ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_dashboard_users_email ON dashboard_users(email);
+      `);
+      process.exit(1);
+    }
 
--- Policy for service role only
-CREATE POLICY "Service role full access" ON dashboard_users
-  FOR ALL USING (true) WITH CHECK (true);
-`);
-  
-  return false;
+    console.log('✅ Table created successfully');
+  } else {
+    console.log('✅ Table already exists');
+  }
+
+  console.log('\nNext steps:');
+  console.log('1. Create an admin user:');
+  console.log('   node scripts/create-admin.js admin@example.com yourpassword');
 }
 
-setupDatabase().catch(console.error);
+setupDatabase();

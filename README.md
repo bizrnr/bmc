@@ -1,4 +1,4 @@
-# 🦾 Bri Status Dashboard
+# 🦾 BMC (BizRnR Mission Control)
 
 Real-time web dashboard for monitoring Bri (OpenClaw AI assistant) status and activity.
 
@@ -78,14 +78,14 @@ If you expose your OpenClaw gateway API publicly (with auth):
 
 1. Open dashboard in Safari
 2. Tap Share → "Add to Home Screen"
-3. Name it "Bri"
+3. Name it "BMC"
 4. Dashboard opens in standalone mode like a native app
 
 ## Architecture
 
 ```
 ┌─────────────────┐    WebSocket    ┌─────────────────┐
-│  Bri Dashboard  │◄──────────────►│  Custom Server  │
+│      BMC        │◄──────────────►│  Custom Server  │
 │    (React)      │                │  (Next.js +     │
 └─────────────────┘                │   Socket.IO)    │
                                    └────────┬────────┘

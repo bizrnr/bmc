@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.API_PORT || 3034;
-const API_TOKEN = process.env.DASHBOARD_API_TOKEN || 'bri-dashboard-token-2026';
+const API_TOKEN = process.env.DASHBOARD_API_TOKEN || 'bmc-token-2026';
 const SESSIONS_FILE = '/root/.openclaw/agents/main/sessions/sessions.json';
 const SESSIONS_DIR = '/root/.openclaw/agents/main/sessions';
 const METRICS_FILE = path.join(SESSIONS_DIR, '.bmc-metrics.json');

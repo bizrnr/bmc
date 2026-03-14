@@ -6,13 +6,13 @@ import { Providers } from './providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Bri Status',
+  title: 'BMC - BizRnR Mission Control',
   description: 'Real-time AI assistant dashboard',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Bri',
+    title: 'BMC',
   },
   icons: {
     icon: '/icon.svg',
